@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Stock Prediction App</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-chart-line"></i> Advanced Stock Prediction Dashboard</h1>
+            <p>Machine Learning-powered stock price movement prediction using Advanced Technical Analysis</p>
+            <span class="model-badge">Advanced ML Model</span>
+        </div>
+
+        <div class="form-group">
+            <label for="stockSymbol"><strong>Select Stock:</strong></label>
+            <div class="stock-selector" id="stockSelector">
+                <!-- Stock options will be populated by JavaScript -->
+            </div>
+            
+            <div style="margin-top: 15px;">
+                <input type="text" id="stockSymbol" placeholder="Or enter custom symbol (e.g., RELIANCE.NS)" style="width: 300px;">
+                <button onclick="getStockInfo()"><i class="fas fa-search"></i> Get Stock Info</button>
+                <button onclick="predictMovement()" style="background: linear-gradient(135deg, var(--success), #34d399);">
+                    <i class="fas fa-bolt"></i> Predict Next Day
+                </button>
+                <button onclick="clearCache()" style="background: linear-gradient(135deg, var(--warning), #f59e0b);">
+                    <i class="fas fa-sync"></i> Clear Cache
+                </button>
+            </div>
+        </div>
+
+        <div id="stockInfo" class="stock-info" style="display: none;">
+            <!-- Stock information will be displayed here -->
+        </div>
+
+        <div id="predictionResult" style="display: none;">
+            <!-- Prediction results will be displayed here -->
+        </div>
+
+        <div id="modelInfo" style="display: none; margin-top: 30px;">
+            <!-- Model information will be displayed here -->
+        </div>
+
+        <div id="loading" style="display: none; text-align: center;">
+            <div class="loading">
+                <div class="spinner"></div>
+                <h3>Training Advanced Model...</h3>
+                <p>This may take 1-2 minutes as we're calculating 50+ technical indicators and training multiple ML models.</p>
+                <p><small>Fetching data, calculating indicators, and optimizing models for best accuracy...</small></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><small>Powered by Machine Learning & Technical Analysis | Data provided by Yahoo Finance</small></p>
+        </div>
+    </div>
+
+    <script>
+        let currentStock = 'RELIANCE.NS';
+        
+        // Load available stocks on page load
+        window.onload = function() {
+            loadAvailableStocks();
+            getStockInfo();
+            getModelInfo(currentStock);
+        };
+
+        async function loadAvailableStocks() {
+            try {
+                const response = await fetch('/available_stocks');
+                const stocks = await response.json();
+                
+                const selector = document.getElementById('stockSelector');
+                selector.innerHTML = '';
+                
+                // Add stocks from each category
+                for (const [category, stockList] of Object.entries(stocks)) {
+                    // Add category header
+                    const categoryHeader = document.createElement('div');
+                    categoryHeader.style.cssText = 'width: 100%; font-weight: bold; margin: 10px 0 5px 0; color: var(--dark);';
+                    categoryHeader.textContent = category;
+                    selector.appendChild(categoryHeader);
+                    
+                    // Add stocks for this category
+                    stockList.forEach(stock => {
+                        const button = document.createElement('div');
+                        button.className = 'stock-option';
+                        button.innerHTML = `
+                            <div>${stock.name}</div>
+                            <small>${stock.symbol}</small>
+                        `;
+                        button.onclick = () => selectStock(stock.symbol, button);
+                        selector.appendChild(button);
+                    });
+                }
+                
+                // Select first stock by default
+                const firstOption = selector.querySelector('.stock-option');
+                if (firstOption) {
+                    selectStock('RELIANCE.NS', firstOption);
+                }
+            } catch (error) {
+                console.error('Error loading stocks:', error);
+            }
+        }
+
+        function selectStock(symbol, element) {
+            currentStock = symbol;
+            
+            // Update active state
+            document.querySelectorAll('.stock-option').forEach(opt => {
+                opt.classList.remove('active');
+            });
+            element.classList.add('active');
+            
+            // Update input field
+            document.getElementById('stockSymbol').value = symbol;
+            
+            // Refresh both stock info and model info
+            getStockInfo();
+            getModelInfo(symbol);
+        }
+
+        async function getStockInfo() {
+            const symbol = document.getElementById('stockSymbol').value || currentStock;
+            if (!symbol) return;
+
+            try {
+                const response = await fetch(`/stock_info?symbol=${symbol}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    showError('Error: ' + data.error);
+                    return;
+                }
+
+                const stockInfoDiv = document.getElementById('stockInfo');
+                const changeClass = data.day_change >= 0 ? 'up' : 'down';
+                const changeIcon = data.day_change >= 0 ? '↗' : '↘';
+
+                stockInfoDiv.innerHTML = `
+                    <div class="info-card">
+                        <h3><i class="fas fa-building"></i> Stock Name</h3>
+                        <p><strong>${data.name}</strong></p>
+                    </div>
+                    <div class="info-card">
+                        <h3><i class="fas fa-rupee-sign"></i> Current Price</h3>
+                        <p><strong>₹${data.current_price}</strong></p>
+                        <p class="${changeClass}">${changeIcon} ₹${data.day_change} (${data.day_change_pct}%)</p>
+                    </div>
+                    <div class="info-card">
+                        <h3><i class="fas fa-chart-bar"></i> Previous Close</h3>
+                        <p>₹${data.previous_close}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3><i class="fas fa-landmark"></i> Market Cap</h3>
+                        <p>${data.market_cap}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3><i class="fas fa-exchange-alt"></i> Volume</h3>
+                        <p>${data.volume}</p>
+                    </div>
+                    <div class="info-card">
+                        <h3><i class="fas fa-industry"></i> Sector</h3>
+                        <p>${data.sector}</p>
+                    </div>
+                `;
+                stockInfoDiv.style.display = 'grid';
+
+            } catch (error) {
+                showError('Error fetching stock information: ' + error);
+            }
+        }
+
+        async function getModelInfo(symbol) {
+            try {
+                // Show loading state
+                const modelInfoDiv = document.getElementById('modelInfo');
+                modelInfoDiv.innerHTML = `
+                    <div class="prediction-card">
+                        <div style="text-align: center; padding: 20px;">
+                            <div class="spinner"></div>
+                            <p>Loading model information...</p>
+                        </div>
+                    </div>
+                `;
+                modelInfoDiv.style.display = 'block';
+
+                const response = await fetch(`/model_info?symbol=${symbol}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    modelInfoDiv.innerHTML = `
+                        <div class="prediction-card">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Model Information</h3>
+                            <div style="text-align: center; color: var(--danger); padding: 20px;">
+                                <p><strong>Unable to load model information</strong></p>
+                                <p>${data.error}</p>
+                                <button onclick="getModelInfo('${symbol}')" style="margin-top: 10px;">
+                                    <i class="fas fa-redo"></i> Retry
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Success - display model information
+                modelInfoDiv.innerHTML = `
+                    <div class="prediction-card">
+                        <h3><i class="fas fa-cogs"></i> Model Information for ${data.stock_symbol}</h3>
+                        <div class="feature-grid">
+                            <div class="feature-item">
+                                <strong><i class="fas fa-chart-line"></i> Stock:</strong> ${data.stock_symbol}
+                            </div>
+                            <div class="feature-item">
+                                <strong><i class="fas fa-database"></i> Data Points:</strong> ${data.data_points.toLocaleString()}
+                            </div>
+                            <div class="feature-item">
+                                <strong><i class="fas fa-sliders-h"></i> Features Used:</strong> ${data.features_count}
+                            </div>
+                            <div class="feature-item">
+                                <strong><i class="fas fa-brain"></i> Model Type:</strong> ${data.model_type}
+                            </div>
+                            <div class="feature-item">
+                                <strong><i class="fas fa-check-circle"></i> Model Status:</strong> 
+                                <span style="color: ${data.is_trained ? 'var(--success)' : 'var(--danger)'}">
+                                    ${data.is_trained ? 'Trained' : 'Not Trained'}
+                                </span>
+                            </div>
+                            <div class="feature-item">
+                                <strong><i class="fas fa-calendar"></i> Period:</strong> 2 Years
+                            </div>
+                        </div>
+                        
+                        ${data.feature_names && data.feature_names.length > 0 ? `
+                            <h4><i class="fas fa-list"></i> Sample Features (First 10):</h4>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;">
+                                ${data.feature_names.map(feature => 
+                                    `<span class="feature-tag">${feature}</span>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        <div class="model-description">
+                            <h5><i class="fas fa-info-circle"></i> About This Model</h5>
+                            <p>
+                                This model uses <strong>${data.features_count} technical indicators</strong> 
+                                trained on <strong>${data.data_points.toLocaleString()} data points</strong> 
+                                to predict next-day price movements.
+                            </p>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error fetching model info:', error);
+                const modelInfoDiv = document.getElementById('modelInfo');
+                modelInfoDiv.innerHTML = `
+                    <div class="prediction-card">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Model Information</h3>
+                        <div style="text-align: center; color: var(--danger); padding: 20px;">
+                            <p><strong>Network Error</strong></p>
+                            <p>Failed to load model information. Please check your connection.</p>
+                            <button onclick="getModelInfo('${symbol}')" style="margin-top: 10px;">
+                                <i class="fas fa-redo"></i> Try Again
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        async function predictMovement() {
+            const symbol = document.getElementById('stockSymbol').value || currentStock;
+            if (!symbol) return;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('predictionResult').style.display = 'none';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ stock_symbol: symbol })
+                });
+
+                const data = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+
+                if (data.success) {
+                    const predictionDiv = document.getElementById('predictionResult');
+                    const confidenceClass = data.signal_strength.toLowerCase();
+                    
+                    predictionDiv.innerHTML = `
+                        <div class="prediction-card">
+                            <h2><i class="fas fa-bullseye"></i> Prediction for ${data.stock_symbol}</h2>
+                            <p><strong>Current Price:</strong> ₹${data.current_price} 
+                               ${data.price_change ? `<span class="${data.price_change >= 0 ? 'up' : 'down'}">(${data.price_change >= 0 ? '+' : ''}${data.price_change}%)</span>` : ''}
+                            </p>
+                            
+                            <h3 class="${data.prediction.toLowerCase()}">
+                                <i class="fas ${data.prediction === 'UP' ? 'fa-arrow-up' : 'fa-arrow-down'}"></i>
+                                Next Day Prediction: ${data.prediction}
+                            </h3>
+                            
+                            <div class="confidence-meter">
+                                <div class="confidence-fill ${confidenceClass}" style="width: ${data.confidence}%"></div>
+                            </div>
+                            
+                            <p><strong>Confidence:</strong> ${data.confidence}%</p>
+                            <p><strong>Signal Strength:</strong> <span class="signal-${confidenceClass}">${data.signal_strength}</span></p>
+                            
+                            <div class="probability-container">
+                                <div class="probability-card up">
+                                    <div class="probability-value">${data.probability_up}%</div>
+                                    <div class="probability-label">Probability UP</div>
+                                </div>
+                                <div class="probability-card down">
+                                    <div class="probability-value">${data.probability_down}%</div>
+                                    <div class="probability-label">Probability DOWN</div>
+                                </div>
+                            </div>
+                            
+                            <div class="prediction-footer">
+                                <p><small><i class="fas fa-clock"></i> Last updated: ${data.timestamp}</small></p>
+                                <p><small><i class="fas fa-brain"></i> ${data.model_type}</small></p>
+                            </div>
+                        </div>
+                    `;
+                    predictionDiv.style.display = 'block';
+                } else {
+                    showError('Prediction failed: ' + data.error);
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                showError('Error making prediction: ' + error);
+            }
+        }
+
+        async function clearCache() {
+            try {
+                const response = await fetch('/clear_cache');
+                const result = await response.json();
+                showSuccess('Cache cleared successfully! Models will be retrained on next prediction.');
+                
+                // Refresh the current model info
+                getModelInfo(currentStock);
+            } catch (error) {
+                showError('Error clearing cache: ' + error);
+            }
+        }
+
+        function showError(message) {
+            alert('Error: ' + message);
+        }
+
+        function showSuccess(message) {
+            alert('Success: ' + message);
+        }
+    </script>
+</body>
+</html>
