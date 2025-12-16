@@ -37,7 +37,7 @@ A machine-learning powered Flask web application that predicts *next-day stock p
 ## ✨ Features
 
 - Fetches historical data via *Yahoo Finance (yfinance)*
-- Computes *technical indicators* (via ta)
+- Computes *technical indicators* 
 - Trains and evaluates *multiple ML models* (Random Forest, XGBoost, Logistic Regression)
 - *Model selection* based on best performance
 - *Model persistence & caching* to speed up subsequent runs
@@ -362,3 +362,4 @@ Your stock prediction app should now be running at http://127.0.0.1:5000
 ## License
 
 Specify your project license here (e.g., MIT). If unsure, add a brief note or a LICENSE file.
+
