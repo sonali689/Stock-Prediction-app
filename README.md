@@ -1,4 +1,4 @@
-**Stock Prediction Web App - Guide
+# Stock Prediction Web App - Guide
 
 
 ```
@@ -91,5 +91,6 @@ stock_prediction_project/
 
 ```
 ```
+
 
 
