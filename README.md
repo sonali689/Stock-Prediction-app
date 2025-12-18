@@ -2,8 +2,6 @@
 
 A machine-learning powered Flask web application that predicts *next-day stock price direction* using advanced technical indicators and an ensemble of ML models.
 
-> **Disclaimer:** This project is for *educational purposes only*. Stock market investments carry risk—do not invest based solely on these predictions.
-
 ---
 
 ## 🧭 Table of Contents
@@ -60,7 +58,7 @@ A machine-learning powered Flask web application that predicts *next-day stock p
 **Option A: Using Git**
 
 ```bash
-git clone <your-repository-url>
+git clone <https://github.com/sonali689/Stock-Prediction-app>
 cd stock_prediction_project
 
 ```
@@ -406,6 +404,3 @@ If you encounter issues:
 
 Your stock prediction app should now be running at **[http://127.0.0.1:5000](http://127.0.0.1:5000)**
 
-## License
-
-Specify your project license here (e.g., MIT). If unsure, add a brief note or a LICENSE file.
