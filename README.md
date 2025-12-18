@@ -1,5 +1,8 @@
-```
 #Stock Prediction Web App - Guide
+
+
+```
+
 
 ## 🚀 Quick Start (Local Development)
 
@@ -88,3 +91,4 @@ stock_prediction_project/
 
 ```
 ```
+
